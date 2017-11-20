@@ -28,6 +28,7 @@ var Redular = function(options){
     redis: {
       port: options.redis.port || 6379,
       host: options.redis.host || '127.0.0.1',
+      password: options.redis.password ||  null,
       redis: options.redis.options || {}
     }
   };
@@ -36,7 +37,9 @@ var Redular = function(options){
   this.redisSub = redis.createClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
   this.redis = redis.createClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
   this.redisInstant = redis.createClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
-
+  this.redisSub.auth(this.options.redis.password);
+  this.redis.auth(this.options.redis.password);
+  this.redisInstant.auth(this.options.redis.password);
   //Attempt auto config
   if(this.options.autoConfig){
     var config = '';

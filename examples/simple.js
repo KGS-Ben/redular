@@ -1,6 +1,14 @@
 var Redular = require('../index');
 
-var redular = new Redular();
+var options = {
+  redis : {
+    port: 6379,
+    host: "myhost",
+	password: 'mypass'
+  }
+}
+
+var redular = new Redular(options);
 
 redular.defineHandler('goodbye', function(name){
   console.log('Goodbye!');

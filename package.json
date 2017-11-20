@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/pthm/redular",
   "dependencies": {
-    "redis": "^0.12.1",
+    "redis": "^2.8.0",
     "shortid": "^2.2.2"
   },
   "devDependencies": {

@@ -1,4 +1,4 @@
-var should = require('should');
+const { expect } = require('chai');
 var redular = require('../index');
 
 describe('Redular', function(){
@@ -12,7 +12,13 @@ describe('Redular', function(){
 
   beforeEach(function() {
     Redular1.deleteHandler('testEvent');
+    Redular1.deleteHandler('testEvent2');
     Redular2.deleteHandler('testEvent');
+    Redular2.deleteHandler('testEvent2');
+  });
+  this.afterEach(function() {
+    // Wait for events to expire
+    setTimeout(()=>{}, 2000);
   });
 
   it('should be able to define a handler', function(done){
@@ -51,7 +57,7 @@ describe('Redular', function(){
     Redular1.defineHandler('testEvent', function(){
       setTimeout(function(){
         done();
-      }, 1000)
+      }, 1000);
     });
 
     Redular2.defineHandler('testEvent', function(){
@@ -85,7 +91,7 @@ describe('Redular', function(){
     });
 
     var now = new Date();
-    Redular1.scheduleEvent('testEvent', now.setSeconds(now.getSeconds() + 1), true);
+    Redular1.scheduleEvent('testEvent', now.setSeconds(now.getSeconds() + 2), true);
   });
 
   it('should be able to pass data to events', function(done){

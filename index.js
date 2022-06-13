@@ -37,9 +37,13 @@ var Redular = function(options){
   this.redisSub = redis.createClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
   this.redis = redis.createClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
   this.redisInstant = redis.createClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
-  this.redisSub.auth(this.options.redis.password);
-  this.redis.auth(this.options.redis.password);
-  this.redisInstant.auth(this.options.redis.password);
+  
+  if (this.options.redis.password) {
+    this.redisSub.auth(this.options.redis.password);
+    this.redis.auth(this.options.redis.password);
+    this.redisInstant.auth(this.options.redis.password);
+  }
+
   //Attempt auto config
   if(this.options.autoConfig){
     var config = '';

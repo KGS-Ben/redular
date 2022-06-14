@@ -1,33 +1,37 @@
 {
-  "name": "redular",
-  "version": "1.1.1",
-  "description": "Node.js event scheduling system powered by redis keyspace notifications",
-  "main": "index.js",
-  "scripts": {
-    "test": "node_modules/mocha/bin/mocha test/**.js -t 6000"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/pthm/redular.git"
-  },
-  "keywords": [
-    "redis",
-    "events",
-    "scheduling",
-    "cron"
-  ],
-  "author": "Patt-tom McDonnell",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/pthm/redular/issues"
-  },
-  "homepage": "https://github.com/pthm/redular",
-  "dependencies": {
-    "redis": "^2.8.0",
-    "shortid": "^2.2.2"
-  },
-  "devDependencies": {
-    "mocha": "^2.2.5",
-    "should": "^6.0.1"
-  }
+    "name": "redular",
+    "version": "1.1.1",
+    "description": "Node.js event scheduling system powered by redis keyspace notifications",
+    "main": "index.js",
+    "scripts": {
+        "test": "node_modules/mocha/bin/mocha test/**.js -t 6000",
+        "prettier": "npx prettier --write ."
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/pthm/redular.git"
+    },
+    "keywords": [
+        "redis",
+        "events",
+        "scheduling",
+        "cron"
+    ],
+    "author": "Patt-tom McDonnell",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/pthm/redular/issues"
+    },
+    "homepage": "https://github.com/pthm/redular",
+    "dependencies": {
+        "redis": "^2.8.0",
+        "shortid": "^2.2.2"
+    },
+    "devDependencies": {
+        "chai": "^4.3.6",
+        "mocha": "^2.2.5",
+        "eslint": "^8.14.0",
+        "eslint-config-prettier": "^8.5.0",
+        "prettier": "^2.7.0"
+    }
 }

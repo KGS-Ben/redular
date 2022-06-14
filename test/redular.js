@@ -113,4 +113,63 @@ describe('Redular', function () {
 
         Redular1.instantEvent('testEvent');
     });
+
+    it('should be able to name events', function (done) {
+        var eventKeys = Redular1.createEventKeys('testEvent', false);
+        expect(eventKeys).to.be.a('object');
+        expect(eventKeys).keys(['event', 'data']);
+        expect(eventKeys.event)
+            .be.a('string')
+            .satisfies((eventKey) => {
+                return eventKey.startsWith('redular:') && eventKey.includes('testEvent');
+            });
+        expect(eventKeys.data)
+            .be.a('string')
+            .satisfies((dataKey) => {
+                return dataKey.startsWith('redular-data:') && dataKey.includes('testEvent');
+            });
+
+        eventKeys = Redular1.createEventKeys('testEvent2', true, 'testId');
+        expect(eventKeys.event)
+            .be.a('string')
+            .satisfies((eventKey) => {
+                return eventKey.startsWith('redular:') && eventKey.includes('testEvent2') && eventKey.includes('global') && eventKey.includes('testId');
+            });
+        expect(eventKeys.data)
+            .be.a('string')
+            .satisfies((dataKey) => {
+                return dataKey.startsWith('redular-data:') && dataKey.includes('testEvent2') && dataKey.includes('global') && dataKey.includes('testId');
+            });
+        done();
+    });
+
+    it('should return the event keys after scheduling an event', function (done) {
+        Redular1.defineHandler('testEvent', function () {});
+
+        var now = new Date();
+        now.setSeconds(now.getSeconds() + 2);
+        var eventKeys = Redular1.scheduleEvent('testEvent', now, false);
+        expect(eventKeys).to.be.a('object');
+        expect(eventKeys).keys(['event', 'data']);
+        expect(eventKeys.event).to.be.a('string');
+        expect(eventKeys.data).to.be.a('string');
+        done();
+    });
+
+    it('should be able to return the expiry date of an event', async function (done) {
+        Redular1.defineHandler('testEvent', function () {});
+
+        var eventDate = new Date();
+        eventDate.setSeconds(eventDate.getSeconds() + 2);
+
+        var eventKeys = Redular1.scheduleEvent('testEvent', eventDate, false);
+        var expiryDate = await Redular1.getEventExpiry(eventKeys.event);
+
+        var expectedExpiry = new Date();
+        expectedExpiry.setSeconds(expectedExpiry.getSeconds() + 2);
+
+        expect(expiryDate).to.be.within(eventDate, expectedExpiry);
+        done();
+    });
+
 });

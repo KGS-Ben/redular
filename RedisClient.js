@@ -5,14 +5,14 @@ const redis = require('redis');
  * @param  {...any} args - Args to pass redis.createClient
  * @returns {Object} - A Redis client
  */
-var RedisClient = function(...args) {
+var RedisClient = function (...args) {
     var self = redis.createClient(...args);
 
     if (!self.hasOwnProperty('promisfyCommand')) {
-        self.promisfyCommand = function(command, args) {
+        self.promisfyCommand = function (command, args) {
             return new Promise((resolve, reject) => {
                 self.sendCommand(command, args, function (err, ...args) {
-                    if(err) {
+                    if (err) {
                         reject(err);
                     }
                     resolve(...args);
@@ -23,6 +23,5 @@ var RedisClient = function(...args) {
 
     return self;
 };
-
 
 module.exports = RedisClient;

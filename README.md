@@ -1,5 +1,4 @@
-# redular [![Build Status](https://travis-ci.org/pthm/redular.svg?branch=master)](https://travis-ci.org/pthm/redular)
-
+# redular [![Build Status](https://github.com/KGS-Ben/redular/actions/workflows/main.yml/badge.svg)](https://github.com/KGS-Ben/redular/actions/workflows/main.yml)
 Node.js event scheduling system powered by Redis keyspace notifications.
 
 **This is a work in progress**
@@ -13,7 +12,7 @@ This sets keys in redis with expiry times, then using the keyspace notifications
 This is useful because it means you can define handlers and trigger them from anywhere in your infrastructure.
 
 # Installation
-
+TODO: Create a new npm package
 ```
 $ npm install redular
 ```

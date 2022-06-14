@@ -95,13 +95,32 @@ var Redular = function (options) {
 Redular.prototype = {};
 
 /**
+ * Generate an event's redis keys
+ * @param {String} name - The name of the event
+ * @param {Boolean} global Should this event be handled by all handlers
+ * @param {String} id - Unique identifier of a scheduled event
+ * @returns {Object} - Event and Data keys stored in redis
+ */
+Redular.prototype.createEventKeys = function (name, global, id) {
+    var clientId = global ? 'global' : this.options.id;
+    var eventId = id ?? shortId.generate();
+
+    return {
+        event: 'redular:' + clientId + ':' + name + ':' + eventId,
+        data: 'redular-data:' + clientId + ':' + name + ':' + eventId,
+    };
+};
+
+/**
  * Schedules an event to occur some time in the future
  * @param {String} name - The name of the event
  * @param {Date} date - Javascript date object or string accepted by new Date(), must be in the future
  * @param {Boolean} global - Should this event be handled by all handlers
  * @param {Object} data - Data to be passed to handler
+ * @param {String} [id] - Unique identifier of a scheduled event
+ * @returns {String} - Event ID stored in redis
  */
-Redular.prototype.scheduleEvent = function (name, date, global, data) {
+Redular.prototype.scheduleEvent = function (name, date, global, data, id) {
     var now = new Date();
     date = new Date(date);
 
@@ -111,12 +130,7 @@ Redular.prototype.scheduleEvent = function (name, date, global, data) {
 
     var diff = date.getTime() - now.getTime();
     var seconds = Math.floor(diff / 1000);
-    var clientId = this.options.id;
-    var eventId = shortId.generate();
-
-    if (global) {
-        clientId = 'global';
-    }
+    var eventKeys = this.createEventKeys(name, global, id);
 
     if (data) {
         try {
@@ -124,12 +138,14 @@ Redular.prototype.scheduleEvent = function (name, date, global, data) {
         } catch (e) {
             throw e;
         }
-        this.redis.set('redular-data:' + clientId + ':' + name + ':' + eventId, data);
-        this.redis.expire('redular-data:' + clientId + ':' + name + ':' + eventId, seconds + this.options.dataExpiry);
+        this.redis.set(eventKeys.data, data);
+        this.redis.expire(eventKeys.data, seconds + this.options.dataExpiry);
     }
 
-    this.redis.set('redular:' + clientId + ':' + name + ':' + eventId, this.options.id);
-    this.redis.expire('redular:' + clientId + ':' + name + ':' + eventId, seconds);
+    this.redis.set(eventKeys.event, this.options.id);
+    this.redis.expire(eventKeys.event, seconds);
+
+    return eventKeys;
 };
 
 /**
@@ -199,11 +215,35 @@ Redular.prototype.deleteHandler = function (name) {
 };
 
 /**
+ * Removes all handlers from the Redular instance
+ */
+Redular.prototype.deleteAllHandlers = function () {
+    this.handlers = [];
+}
+
+/**
  * Returns the instance ID
  * @returns {*} - Instance ID of this redis client
  */
 Redular.prototype.getClientId = function () {
     return this.options.id;
+};
+
+/**
+ * Gets the date that an event expires
+ * @param {String} eventKey - Key of an event to retrieve the launch time
+ * @returns {Date} - Expiry date
+ */
+Redular.prototype.getEventExpiry = function (eventKey) {
+    return new Promise((resolve, reject) => {
+        this.redis.sendCommand('PEXPIRETIME', [eventKey], (err, ttl) => {
+            if (err) {
+                reject();
+            }
+            let now = new Date(ttl);
+            resolve(now);
+        });
+    });
 };
 
 module.exports = Redular;

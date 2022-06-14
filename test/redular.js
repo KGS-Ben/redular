@@ -167,4 +167,20 @@ describe('Redular', function () {
             throw new Error('Failed to get event expiration');
         }
     });
+
+    it("should be able to overwrite an event and it's data", function (done) {
+        Redular1.defineHandler('overwriteEvent', function (data) {
+            if (data.valid) {
+                done();
+            } else {
+                throw new Error('Incorrect handler called');
+            }
+        });
+
+        var now = new Date();
+        Redular1.scheduleEvent('overwriteEvent', now.setHours(now.getHours() + 1), false, { valid: false }, 'tester');
+
+        now = new Date();
+        id = Redular1.scheduleEvent('overwriteEvent', now.setSeconds(now.getSeconds() + 2), false, { valid: true }, 'tester');
+    });
 });

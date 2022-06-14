@@ -173,6 +173,4 @@ describe('Redular', function () {
             throw new Error('Failed to get event expiration');
         }
     });
-    });
-
 });

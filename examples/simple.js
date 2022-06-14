@@ -4,7 +4,7 @@ var options = {
   redis : {
     port: 6379,
     host: "myhost",
-	password: 'mypass'
+	  password: 'mypass'
   }
 }
 

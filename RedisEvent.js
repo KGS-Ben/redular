@@ -1,8 +1,8 @@
 /**
  * Creates a event listener for redis keyspace notifications
- * @param client {Redis} - An instance of node-redis client to connect with
- * @param event {String} - The type of keyspace event
- * @param keyPattern {RegExp} - RegExp pattern to match for key names
+ * @param {Redis} client - An instance of node-redis client to connect with
+ * @param {String} event - The type of keyspace event
+ * @param {RegExp} keyPattern - RegExp pattern to match for key names
  * @constructor
  */
 var RedisEvent = function(client, event, keyPattern){

@@ -5,7 +5,7 @@ var shortId = require('shortid');
 
 /**
  * Node.js scheduling system powered by Redis Keyspace Notifications
- * @param options {Object}
+ * @param {Object} options - Configuration for redular
  * @constructor
  */
 var Redular = function(options){
@@ -98,10 +98,10 @@ Redular.prototype = {
 
 /**
  * Schedules an event to occur some time in the future
- * @param name {String} - The name of the event
- * @param date {Date} - Javascript date object or string accepted by new Date(), must be in the future
- * @param global {Boolean} - Should this event be handled by all handlers
- * @param data {Object} - Data to be passed to handler
+ * @param {String} name - The name of the event
+ * @param {Date} date - Javascript date object or string accepted by new Date(), must be in the future
+ * @param {Boolean} global - Should this event be handled by all handlers
+ * @param {Object} data - Data to be passed to handler
  */
 Redular.prototype.scheduleEvent = function(name, date, global, data){
   var now = new Date();
@@ -117,7 +117,7 @@ Redular.prototype.scheduleEvent = function(name, date, global, data){
   var eventId = shortId.generate();
 
   if(global){
-    clientId = 'global'
+    clientId = 'global';
   }
 
   if(data){
@@ -136,9 +136,9 @@ Redular.prototype.scheduleEvent = function(name, date, global, data){
 
 /**
  * Emit an event to be handled immediately
- * @param name {String} - The name of the event
- * @param global {Boolean} - Should this event be handled by all handlers
- * @param data {Object} - Data to be passed to handler
+ * @param {String} name - The name of the event
+ * @param {Boolean} global - Should this event be handled by all handlers
+ * @param {Object} data - Data to be passed to handler
  */
 Redular.prototype.instantEvent = function(name, global, data){
   var _this = this;
@@ -156,7 +156,8 @@ Redular.prototype.instantEvent = function(name, global, data){
 
 /**
  * This is called when an event occurs, if no handler exists nothing happens
- * @param name
+ * @param {string} name - Name of event
+ * @param {Any} data - Data to pass to the event handler
  */
 Redular.prototype.handleEvent = function(name, data){
   if(this.handlers.hasOwnProperty(name)){
@@ -166,8 +167,9 @@ Redular.prototype.handleEvent = function(name, data){
 
 /**
  * Define a handler for an event name
- * @param name {String} - The event's name
- * @param action {Function} - The function to be called when the event is triggered
+ * @param {String} name - The event's name
+ * @param {Function} action - The function to be called when the event is triggered
+ * @returns {String} - Name of the event handler
  */
 Redular.prototype.defineHandler = function(name, action){
   if(!extras.isFunction(action)){
@@ -182,7 +184,7 @@ Redular.prototype.defineHandler = function(name, action){
 
 /**
  * Returns an object with currently defined handlers
- * @returns {{}|*}
+ * @returns {{}|*} - The currently defined handlers
  */
 Redular.prototype.getHandlers = function(){
   return this.handlers;
@@ -190,7 +192,7 @@ Redular.prototype.getHandlers = function(){
 
 /**
  * Removes a handler from the Redular instance
- * @param name
+ * @param {String} name - The name of an event handler to delete
  */
 Redular.prototype.deleteHandler = function(name){
   if(this.handlers.hasOwnProperty(name)){
@@ -200,7 +202,7 @@ Redular.prototype.deleteHandler = function(name){
 
 /**
  * Returns the instance ID
- * @returns {*}
+ * @returns {*} - Instance ID of this redis client
  */
 Redular.prototype.getClientId = function(){
   return this.options.id;

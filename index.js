@@ -1,4 +1,5 @@
 var redis = require('redis');
+var RedisClient = require('./RedisClient');
 var extras = require('./extras');
 var RedisEvent = require('./RedisEvent');
 var shortId = require('shortid');
@@ -34,9 +35,9 @@ var Redular = function (options) {
     };
 
     //Create redis clients
-    this.redisSub = redis.createClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
-    this.redis = redis.createClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
-    this.redisInstant = redis.createClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
+    this.redisSub = RedisClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
+    this.redis = RedisClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
+    this.redisInstant = RedisClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
 
     if (this.options.redis.password) {
         this.redisSub.auth(this.options.redis.password);
@@ -109,6 +110,40 @@ Redular.prototype.createEventKeys = function (name, global, id) {
         event: 'redular:' + clientId + ':' + name + ':' + eventId,
         data: 'redular-data:' + clientId + ':' + name + ':' + eventId,
     };
+};
+
+/**
+ * Remove a scheduled event and it's data
+ * @param {String} eventKey - Event key to delete
+ * @returns {Boolean} - true if deleted
+ */
+Redular.prototype.deleteEvent = async function (eventKey) {
+    let dataKey = eventKey.replace('redular:', 'redular-data:');
+    await this.redis.del([eventKey, dataKey]);
+    return true;
+};
+
+/**
+ * Prunes all data that no longer has a matching key
+ * @returns {Boolean} - True on success
+ */
+Redular.prototype.pruneData = async function () {
+    try {
+        let dataKeys = await this.redis.promisfyCommand('KEYS', ['redular-data:*']);
+        let deletePromises = [];
+        for (dataKey of dataKeys) {
+            let eventKey = dataKey.replace('redular-data:', 'redular:');
+            let exists = await this.redis.promisfyCommand('EXISTS', [eventKey]);
+            if (!exists) {
+                deletePromises.push(this.deleteEvent(eventKey));
+            }
+        }
+
+        await Promise.all(deletePromises);
+        return true;
+    } catch (err) {
+        return false;
+    }
 };
 
 /**
@@ -219,7 +254,7 @@ Redular.prototype.deleteHandler = function (name) {
  */
 Redular.prototype.deleteAllHandlers = function () {
     this.handlers = [];
-}
+};
 
 /**
  * Returns the instance ID
@@ -232,18 +267,15 @@ Redular.prototype.getClientId = function () {
 /**
  * Gets the date that an event expires
  * @param {String} eventKey - Key of an event to retrieve the launch time
- * @returns {Date} - Expiry date
+ * @returns {Date} - Expiry date, null on fail
  */
-Redular.prototype.getEventExpiry = function (eventKey) {
-    return new Promise((resolve, reject) => {
-        this.redis.sendCommand('PEXPIRETIME', [eventKey], (err, ttl) => {
-            if (err) {
-                reject();
-            }
-            let now = new Date(ttl);
-            resolve(now);
-        });
-    });
+Redular.prototype.getEventExpiry = async function (eventKey) {
+    try {
+        let ttl = await this.redis.promisfyCommand('PEXPIRETIME', [eventKey]);
+        return new Date(ttl);
+    } catch (err) {
+        return null;
+    }
 };
 
 module.exports = Redular;

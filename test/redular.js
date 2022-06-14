@@ -160,7 +160,7 @@ describe('Redular', function () {
 
             var expectedExpiry = new Date();
             expectedExpiry.setSeconds(expectedExpiry.getSeconds() + 2);
-    
+
             expect(expiryDate).to.be.within(eventDate, expectedExpiry);
             done();
         } catch (err) {
@@ -182,5 +182,44 @@ describe('Redular', function () {
 
         now = new Date();
         id = Redular1.scheduleEvent('overwriteEvent', now.setSeconds(now.getSeconds() + 2), false, { valid: true }, 'tester');
+    });
+
+    it("should be able to delete an event and it's data", function (done) {
+        Redular1.defineHandler('deleteEvent', function (data) {
+            throw new Error('Handler should not be called');
+        });
+
+        var now = new Date();
+        var eventKeys = Redular1.scheduleEvent('deleteEvent', now.setSeconds(now.getSeconds() + 2), false, { valid: true }, 'tester');
+        Redular1.deleteEvent(eventKeys.event);
+
+        setTimeout(() => {
+            done();
+        }, 4000);
+    });
+
+    it('should be able to prune all data without a matching event', async function (done) {
+        Redular1.redis.set('redular-data:pruneTest', JSON.stringify({ valid: false }));
+        await Redular1.pruneData();
+        let data = await Redular1.redis.get('redular-data:pruneTest', function (error, data) {
+            if (data) {
+                throw new Error('Data should have been pruned!');
+            }
+            done();
+        });
+    });
+
+    it('should not prune data with matching event keys', async function (done) {
+        Redular1.defineHandler('pruneTestEvent', function (data) {
+            if (data.valid) {
+                done();
+            } else {
+                throw new Error('Incorrect handler called');
+            }
+        });
+
+        var now = new Date();
+        Redular1.scheduleEvent('pruneTestEvent', now.setSeconds(now.getSeconds() + 3), false, { valid: true }, 'tester');
+        await Redular1.pruneData();
     });
 });

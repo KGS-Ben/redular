@@ -8,93 +8,91 @@ var shortId = require('shortid');
  * @param {Object} options - Configuration for redular
  * @constructor
  */
-var Redular = function(options){
-  var _this = this;
+var Redular = function (options) {
+    var _this = this;
 
-  this.handlers = {};
+    this.handlers = {};
 
-  if(!options){
-    options = {};
-  }
-
-  if(!options.redis){
-    options.redis = {};
-  }
-
-  this.options = {
-    id: options.id || shortId.generate(),
-    autoConfig: options.autoConfig ||  false,
-    dataExpiry: options.dataExpiry || 30,
-    redis: {
-      port: options.redis.port || 6379,
-      host: options.redis.host || '127.0.0.1',
-      password: options.redis.password ||  null,
-      redis: options.redis.options || {}
+    if (!options) {
+        options = {};
     }
-  };
 
-  //Create redis clients
-  this.redisSub = redis.createClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
-  this.redis = redis.createClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
-  this.redisInstant = redis.createClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
-  
-  if (this.options.redis.password) {
-    this.redisSub.auth(this.options.redis.password);
-    this.redis.auth(this.options.redis.password);
-    this.redisInstant.auth(this.options.redis.password);
-  }
+    if (!options.redis) {
+        options.redis = {};
+    }
 
-  //Attempt auto config
-  if(this.options.autoConfig){
-    var config = '';
-    this.redis.config("GET", "notify-keyspace-events", function(err, data){
-      if(data){
-        config = data[1];
-      }
-      if(config.indexOf('E') == -1){
-        config += 'E'
-      }
-      if(config.indexOf('x') == -1){
-        config += 'x'
-      }
-      _this.redis.config("SET", "notify-keyspace-events", config)
+    this.options = {
+        id: options.id || shortId.generate(),
+        autoConfig: options.autoConfig || false,
+        dataExpiry: options.dataExpiry || 30,
+        redis: {
+            port: options.redis.port || 6379,
+            host: options.redis.host || '127.0.0.1',
+            password: options.redis.password || null,
+            redis: options.redis.options || {},
+        },
+    };
+
+    //Create redis clients
+    this.redisSub = redis.createClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
+    this.redis = redis.createClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
+    this.redisInstant = redis.createClient(this.options.redis.port, this.options.redis.host, this.options.redis.options);
+
+    if (this.options.redis.password) {
+        this.redisSub.auth(this.options.redis.password);
+        this.redis.auth(this.options.redis.password);
+        this.redisInstant.auth(this.options.redis.password);
+    }
+
+    //Attempt auto config
+    if (this.options.autoConfig) {
+        var config = '';
+        this.redis.config('GET', 'notify-keyspace-events', function (err, data) {
+            if (data) {
+                config = data[1];
+            }
+            if (config.indexOf('E') == -1) {
+                config += 'E';
+            }
+            if (config.indexOf('x') == -1) {
+                config += 'x';
+            }
+            _this.redis.config('SET', 'notify-keyspace-events', config);
+        });
+    }
+
+    //Listen to key expiry notifications and handle events
+    var expiryListener = new RedisEvent(this.redisSub, 'expired', /redular:(.+):(.+):(.+)/);
+    expiryListener.defineHandler(function (key) {
+        var clientId = key[1];
+        var eventName = key[2];
+        var eventId = key[3];
+
+        _this.redis.get('redular-data:' + clientId + ':' + eventName + ':' + eventId, function (err, data) {
+            if (data) {
+                data = JSON.parse(data);
+            }
+            if (clientId == _this.options.id || clientId == 'global') {
+                _this.handleEvent(eventName, data);
+            }
+        });
     });
-  }
 
-  //Listen to key expiry notifications and handle events
-  var expiryListener = new RedisEvent(this.redisSub, 'expired', /redular:(.+):(.+):(.+)/);
-  expiryListener.defineHandler(function(key){
-    var clientId = key[1];
-    var eventName = key[2];
-    var eventId = key[3];
-
-    _this.redis.get('redular-data:' + clientId + ':' + eventName + ':' + eventId, function(err, data){
-      if(data){
-        data = JSON.parse(data);
-      }
-      if(clientId == _this.options.id || clientId == 'global'){
-        _this.handleEvent(eventName, data);
-      }
+    //Listen to instant events and handle them
+    this.redisInstant.subscribe('redular:instant');
+    this.redisInstant.on('message', function (channel, message) {
+        try {
+            var parsedMessage = JSON.parse(message);
+        } catch (e) {
+            throw e;
+        }
+        if (parsedMessage.client == _this.options.id || parsedMessage.client == 'global') {
+            _this.handleEvent(parsedMessage.event, parsedMessage.data);
+        }
     });
-  });
-
-  //Listen to instant events and handle them
-  this.redisInstant.subscribe('redular:instant');
-  this.redisInstant.on('message', function(channel, message){
-    try{
-      var parsedMessage = JSON.parse(message);
-    } catch (e){
-      throw e;
-    }
-    if(parsedMessage.client == _this.options.id || parsedMessage.client == 'global') {
-      _this.handleEvent(parsedMessage.event, parsedMessage.data);
-    }
-  });
-
 };
 
-Redular.prototype = {
-};
+Redular.prototype = {};
 
 /**
  * Schedules an event to occur some time in the future
@@ -103,35 +101,35 @@ Redular.prototype = {
  * @param {Boolean} global - Should this event be handled by all handlers
  * @param {Object} data - Data to be passed to handler
  */
-Redular.prototype.scheduleEvent = function(name, date, global, data){
-  var now = new Date();
-  date = new Date(date);
+Redular.prototype.scheduleEvent = function (name, date, global, data) {
+    var now = new Date();
+    date = new Date(date);
 
-  if(extras.isBefore(date, now)){
-    return;
-  }
-
-  var diff = date.getTime() - now.getTime();
-  var seconds = Math.floor(diff / 1000);
-  var clientId = this.options.id;
-  var eventId = shortId.generate();
-
-  if(global){
-    clientId = 'global';
-  }
-
-  if(data){
-    try{
-      data = JSON.stringify(data);
-    } catch (e) {
-      throw e;
+    if (extras.isBefore(date, now)) {
+        return;
     }
-    this.redis.set('redular-data:' + clientId + ':' + name + ':' + eventId, data);
-    this.redis.expire('redular-data:' + clientId + ':' + name + ':' + eventId, seconds + this.options.dataExpiry);
-  }
 
-  this.redis.set('redular:' + clientId + ':' + name + ':' + eventId, this.options.id);
-  this.redis.expire('redular:' + clientId + ':' + name + ':' + eventId, seconds);
+    var diff = date.getTime() - now.getTime();
+    var seconds = Math.floor(diff / 1000);
+    var clientId = this.options.id;
+    var eventId = shortId.generate();
+
+    if (global) {
+        clientId = 'global';
+    }
+
+    if (data) {
+        try {
+            data = JSON.stringify(data);
+        } catch (e) {
+            throw e;
+        }
+        this.redis.set('redular-data:' + clientId + ':' + name + ':' + eventId, data);
+        this.redis.expire('redular-data:' + clientId + ':' + name + ':' + eventId, seconds + this.options.dataExpiry);
+    }
+
+    this.redis.set('redular:' + clientId + ':' + name + ':' + eventId, this.options.id);
+    this.redis.expire('redular:' + clientId + ':' + name + ':' + eventId, seconds);
 };
 
 /**
@@ -140,18 +138,18 @@ Redular.prototype.scheduleEvent = function(name, date, global, data){
  * @param {Boolean} global - Should this event be handled by all handlers
  * @param {Object} data - Data to be passed to handler
  */
-Redular.prototype.instantEvent = function(name, global, data){
-  var _this = this;
-  var clientId = _this.options.id;
-  if(global){
-    clientId = 'global';
-  }
-  var payload = JSON.stringify({
-    event: name,
-    client: clientId,
-    data: data
-  });
-  this.redis.publish('redular:instant', payload);
+Redular.prototype.instantEvent = function (name, global, data) {
+    var _this = this;
+    var clientId = _this.options.id;
+    if (global) {
+        clientId = 'global';
+    }
+    var payload = JSON.stringify({
+        event: name,
+        client: clientId,
+        data: data,
+    });
+    this.redis.publish('redular:instant', payload);
 };
 
 /**
@@ -159,10 +157,10 @@ Redular.prototype.instantEvent = function(name, global, data){
  * @param {string} name - Name of event
  * @param {Any} data - Data to pass to the event handler
  */
-Redular.prototype.handleEvent = function(name, data){
-  if(this.handlers.hasOwnProperty(name)){
-    this.handlers[name](data);
-  }
+Redular.prototype.handleEvent = function (name, data) {
+    if (this.handlers.hasOwnProperty(name)) {
+        this.handlers[name](data);
+    }
 };
 
 /**
@@ -171,41 +169,41 @@ Redular.prototype.handleEvent = function(name, data){
  * @param {Function} action - The function to be called when the event is triggered
  * @returns {String} - Name of the event handler
  */
-Redular.prototype.defineHandler = function(name, action){
-  if(!extras.isFunction(action)){
-    throw 'InvalidHandlerException'
-  }
-  if(this.handlers.hasOwnProperty(name)){
-    throw 'HandlerAlreadyExistsException';
-  }
-  this.handlers[name] = action;
-  return name;
+Redular.prototype.defineHandler = function (name, action) {
+    if (!extras.isFunction(action)) {
+        throw 'InvalidHandlerException';
+    }
+    if (this.handlers.hasOwnProperty(name)) {
+        throw 'HandlerAlreadyExistsException';
+    }
+    this.handlers[name] = action;
+    return name;
 };
 
 /**
  * Returns an object with currently defined handlers
  * @returns {{}|*} - The currently defined handlers
  */
-Redular.prototype.getHandlers = function(){
-  return this.handlers;
+Redular.prototype.getHandlers = function () {
+    return this.handlers;
 };
 
 /**
  * Removes a handler from the Redular instance
  * @param {String} name - The name of an event handler to delete
  */
-Redular.prototype.deleteHandler = function(name){
-  if(this.handlers.hasOwnProperty(name)){
-    delete this.handlers[name];
-  }
+Redular.prototype.deleteHandler = function (name) {
+    if (this.handlers.hasOwnProperty(name)) {
+        delete this.handlers[name];
+    }
 };
 
 /**
  * Returns the instance ID
  * @returns {*} - Instance ID of this redis client
  */
-Redular.prototype.getClientId = function(){
-  return this.options.id;
+Redular.prototype.getClientId = function () {
+    return this.options.id;
 };
 
 module.exports = Redular;

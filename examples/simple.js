@@ -1,21 +1,21 @@
 var Redular = require('../index');
 
 var options = {
-  redis : {
-    port: 6379,
-    host: "myhost",
-	  password: 'mypass'
-  }
-}
+    redis: {
+        port: 6379,
+        host: 'myhost',
+        password: 'mypass',
+    },
+};
 
 var redular = new Redular(options);
 
-redular.defineHandler('goodbye', function(name){
-  console.log('Goodbye!');
+redular.defineHandler('goodbye', function (name) {
+    console.log('Goodbye!');
 });
 
-redular.defineHandler('test', function(name){
-  console.log(name);
+redular.defineHandler('test', function (name) {
+    console.log(name);
 });
 
 var date = new Date();

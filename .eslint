@@ -1,0 +1,39 @@
+{
+    "env": {
+        "es2021": true,
+        "amd": true,
+        "jest/globals": true
+    },
+    "extends": ["eslint:recommended", "plugin:node/recommended", "prettier"],
+    "plugins": ["jest"],
+    "parserOptions": {
+        "ecmaFeatures": {
+            "jsx": true
+        },
+        "ecmaVersion": "latest",
+        "sourceType": "module"
+    },
+    "rules": {
+        "jest/no-disabled-tests": "warn",
+        "jest/no-focused-tests": "error",
+        "jest/no-identical-title": "error",
+        "jest/prefer-to-have-length": "warn",
+        "jest/valid-expect": "error",
+        "require-jsdoc": [
+            "error",
+            {
+                "require": {
+                    "FunctionDeclaration": true,
+                    "MethodDefinition": false,
+                    "ClassDeclaration": false,
+                    "ArrowFunctionExpression": false,
+                    "FunctionExpression": false
+                }
+            }
+        ],
+        "indent": ["error", 4],
+        "max-len": ["error", { "code": 80 }],
+        "semi-style": ["error", "last"],
+        "quotes": ["error", "single"]
+    }
+}

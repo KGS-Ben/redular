@@ -215,6 +215,13 @@ Redular.prototype.deleteHandler = function (name) {
 };
 
 /**
+ * Removes all handlers from the Redular instance
+ */
+Redular.prototype.deleteAllHandlers = function () {
+    this.handlers = [];
+}
+
+/**
  * Returns the instance ID
  * @returns {*} - Instance ID of this redis client
  */

@@ -282,4 +282,37 @@ Redular.prototype.getEventExpiry = async function (eventKey) {
     }
 };
 
+/**
+ * Get events that fall in the inclusive range of startDate, endDate
+ * @param {Date} startDate - Starting date of range (inclusive)
+ * @param {Date} endDate - Ending date of range (inclusive)
+ * @returns {Array<String>} - List of event keys
+ */
+Redular.prototype.getEvents = async function (startDate, endDate) {
+    try {
+        let datesInRange = [];
+
+        // Scan to get keys
+        let scanResult = await this.redis.promisfyCommand('SCAN', ['0', 'MATCH', 'redular:*']);
+        do{
+            // Get event keys' expiry
+            let keys = scanResult[1];
+            for (let eventKey of keys) {
+                // Store if in range
+                try {
+                    let expiry = await this.getEventExpiry(eventKey);
+                    if (startDate.getTime() <= expiry.getTime() && expiry.getTime() <= endDate.getTime()) {
+                        datesInRange.push(eventKey);
+                    }
+                } catch (err) {
+                    // Couldn't get expiry, ignore.
+                }
+            }
+            scanResult = await this.redis.promisfyCommand('SCAN', [scanResult[0], 'MATCH', 'redular:*']);
+        } while (scanResult[0] !== '0');
+        return datesInRange;
+    } catch (err) {
+
+    }
+}
 module.exports = Redular;

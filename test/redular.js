@@ -1,6 +1,10 @@
 const { expect } = require('chai');
 var redular = require('../index');
 
+/**
+ * All test cases should have a unique event
+ * to minimize previous test case interactions.
+ */
 describe('Redular', function () {
     var options = {
         autoConfig: true,
@@ -11,6 +15,7 @@ describe('Redular', function () {
 
     this.afterEach(function () {
         Redular1.deleteAllHandlers();
+        Redular2.deleteAllHandlers();
         setTimeout(() => {}, 2000);
     });
 
@@ -148,7 +153,7 @@ describe('Redular', function () {
         done();
     });
 
-    it('should be able to return the expiry date of an event', async function (done) {
+    it('should be able to return the expiry date of an event', async function () {
         Redular1.defineHandler('peekExpiryTestEvent', function () {});
 
         var eventDate = new Date();
@@ -162,7 +167,6 @@ describe('Redular', function () {
             expectedExpiry.setSeconds(expectedExpiry.getSeconds() + 2);
 
             expect(expiryDate).to.be.within(eventDate, expectedExpiry);
-            done();
         } catch (err) {
             throw new Error('Failed to get event expiration');
         }
@@ -195,31 +199,75 @@ describe('Redular', function () {
 
         setTimeout(() => {
             done();
-        }, 4000);
+        }, 3000);
     });
 
-    it('should be able to prune all data without a matching event', async function (done) {
+    it('should be able to prune all data without a matching event', async function () {
         Redular1.redis.set('redular-data:pruneTest', JSON.stringify({ valid: false }));
         await Redular1.pruneData();
         let data = await Redular1.redis.get('redular-data:pruneTest', function (error, data) {
             if (data) {
                 throw new Error('Data should have been pruned!');
             }
-            done();
         });
     });
 
-    it('should not prune data with matching event keys', async function (done) {
+    it('should not prune data with matching event keys', async function () {
         Redular1.defineHandler('pruneTestEvent', function (data) {
-            if (data.valid) {
-                done();
-            } else {
+            if (!data.valid) {
                 throw new Error('Incorrect handler called');
             }
         });
 
         var now = new Date();
-        Redular1.scheduleEvent('pruneTestEvent', now.setSeconds(now.getSeconds() + 3), false, { valid: true }, 'tester');
+        let eventId = Redular1.scheduleEvent('pruneTestEvent', now.setSeconds(now.getSeconds() + 1), false, { valid: true }, 'tester');
         await Redular1.pruneData();
+        Redular1.deleteEvent(eventId.event);
+    });
+
+    it('should be able to retrieve events that are within a date range', async function() {
+        let validEventIds = []
+        var startDate = new Date();
+
+        var now = new Date();
+        validEventIds.push(Redular1.scheduleEvent('validDateRangeTestEvent', now.setSeconds(now.getSeconds() + 1), false, { valid: true }).event);
+        validEventIds.push(Redular1.scheduleEvent('validDateRangeTestEvent', now.setSeconds(now.getSeconds() + 1), false, { valid: true }).event);
+
+        var endDate = new Date();
+        endDate.setSeconds(endDate.getSeconds() + 2);
+
+        let eventsInRange = await Redular1.getEvents(startDate, endDate);
+        expect(eventsInRange).to.be.an('array');
+        validEventIds.sort();
+        eventsInRange.sort();
+        
+        expect(eventsInRange).to.have.deep.members(validEventIds);
+        // Expire long events from this test
+        setTimeout(() => {}, 4);
+    });
+
+    it('should not return dates which are not within a date range', async function () {
+        let invalidEvents = [];
+        let validEvents = [];
+        var startDate = new Date();
+
+        var now = new Date();
+        validEvents.push(Redular1.scheduleEvent('invalidDateRangeTestEvent', now.setSeconds(now.getSeconds() + 10), false, null, 'valid').event);
+
+        // This event will expire before retrieving events
+        now = new Date();
+        invalidEvents.push(Redular1.scheduleEvent('invalidDateRangeTestEvent', now.setSeconds(now.getSeconds() + 1), false, null, 'expire').event);
+        
+        // This event should be out of range
+        now = new Date();
+        invalidEvents.push(Redular1.scheduleEvent('invalidDateRangeTestEvent', now.setHours(now.getHours() + 10), false, null, 'future').event);
+
+        var endDate = new Date();
+        endDate.setMinutes(endDate.getMinutes() + 1);
+
+        setTimeout(async () => {
+            let eventsInRange = await Redular1.getEvents(startDate, endDate);
+            expect(eventsInRange).to.have.deep.members(validEvents);
+        }, 1500)
     });
 });

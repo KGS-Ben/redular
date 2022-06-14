@@ -54,9 +54,7 @@ describe('Redular', function () {
 
     it('should not handle events for other Redular instances', function (done) {
         Redular1.defineHandler('testEvent', function () {
-            setTimeout(function () {
-                done();
-            }, 1000);
+            done();
         });
 
         Redular2.defineHandler('testEvent', function () {
@@ -163,13 +161,18 @@ describe('Redular', function () {
         eventDate.setSeconds(eventDate.getSeconds() + 2);
 
         var eventKeys = Redular1.scheduleEvent('testEvent', eventDate, false);
-        var expiryDate = await Redular1.getEventExpiry(eventKeys.event);
+        try {
+            var expiryDate = await Redular1.getEventExpiry(eventKeys.event);
 
-        var expectedExpiry = new Date();
-        expectedExpiry.setSeconds(expectedExpiry.getSeconds() + 2);
-
-        expect(expiryDate).to.be.within(eventDate, expectedExpiry);
-        done();
+            var expectedExpiry = new Date();
+            expectedExpiry.setSeconds(expectedExpiry.getSeconds() + 2);
+    
+            expect(expiryDate).to.be.within(eventDate, expectedExpiry);
+            done();
+        } catch (err) {
+            throw new Error('Failed to get event expiration');
+        }
+    });
     });
 
 });

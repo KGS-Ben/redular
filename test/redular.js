@@ -16,7 +16,6 @@ describe('Redular', function () {
     this.afterEach(function () {
         Redular1.deleteAllHandlers();
         Redular2.deleteAllHandlers();
-        setTimeout(() => {}, 2000);
     });
 
     it('should be able to define a handler', function (done) {
@@ -44,9 +43,10 @@ describe('Redular', function () {
         });
 
         var now = new Date();
-        Redular1.scheduleEvent('differentNameTestEvent', now.setSeconds(now.getSeconds() + 2));
+        let keys = Redular1.scheduleEvent('differentNameTestEvent', now.setSeconds(now.getSeconds() + 2));
 
         setTimeout(function () {
+            Redular1.deleteEvents(keys.event);
             done();
         }, 1500);
     });
@@ -137,6 +137,7 @@ describe('Redular', function () {
             .satisfies((dataKey) => {
                 return dataKey.startsWith('redular-data:') && dataKey.includes('namingTestEvent2') && dataKey.includes('global') && dataKey.includes('testId');
             });
+        Redular1.deleteEvents(eventKeys.event);
         done();
     });
 
@@ -150,6 +151,7 @@ describe('Redular', function () {
         expect(eventKeys).keys(['event', 'data']);
         expect(eventKeys.event).to.be.a('string');
         expect(eventKeys.data).to.be.a('string');
+        Redular1.deleteEvents(eventKeys.event);
         done();
     });
 
@@ -170,22 +172,25 @@ describe('Redular', function () {
         } catch (err) {
             throw new Error('Failed to get event expiration');
         }
+        Redular1.deleteEvents(eventKeys.event);
     });
 
     it("should be able to overwrite an event and it's data", function (done) {
+        let createdEvents = [];
         Redular1.defineHandler('overwriteEvent', function (data) {
             if (data.valid) {
                 done();
+                Redular1.deleteEvents(createdEvents);
             } else {
                 throw new Error('Incorrect handler called');
             }
         });
 
         var now = new Date();
-        Redular1.scheduleEvent('overwriteEvent', now.setHours(now.getHours() + 1), false, { valid: false }, 'tester');
+        createdEvents.push(Redular1.scheduleEvent('overwriteEvent', now.setHours(now.getHours() + 1), false, { valid: false }, 'tester').event);
 
         now = new Date();
-        id = Redular1.scheduleEvent('overwriteEvent', now.setSeconds(now.getSeconds() + 2), false, { valid: true }, 'tester');
+        createdEvents.push(Redular1.scheduleEvent('overwriteEvent', now.setSeconds(now.getSeconds() + 2), false, { valid: true }, 'tester').event);
     });
 
     it("should be able to delete an event and it's data", function (done) {
@@ -195,7 +200,7 @@ describe('Redular', function () {
 
         var now = new Date();
         var eventKeys = Redular1.scheduleEvent('deleteEvent', now.setSeconds(now.getSeconds() + 2), false, { valid: true }, 'tester');
-        Redular1.deleteEvent(eventKeys.event);
+        Redular1.deleteEvents([eventKeys.event]);
 
         setTimeout(() => {
             done();
@@ -205,7 +210,7 @@ describe('Redular', function () {
     it('should be able to prune all data without a matching event', async function () {
         Redular1.redis.set('redular-data:pruneTest', JSON.stringify({ valid: false }));
         await Redular1.pruneData();
-        let data = await Redular1.redis.get('redular-data:pruneTest', function (error, data) {
+        await Redular1.redis.get('redular-data:pruneTest', function (error, data) {
             if (data) {
                 throw new Error('Data should have been pruned!');
             }
@@ -222,28 +227,27 @@ describe('Redular', function () {
         var now = new Date();
         let eventId = Redular1.scheduleEvent('pruneTestEvent', now.setSeconds(now.getSeconds() + 1), false, { valid: true }, 'tester');
         await Redular1.pruneData();
-        Redular1.deleteEvent(eventId.event);
+        Redular1.deleteEvents([eventId.event]);
     });
 
     it('should be able to retrieve events that are within a date range', async function () {
-        let validEventIds = [];
+        let validEvents = [];
         var startDate = new Date();
 
         var now = new Date();
-        validEventIds.push(Redular1.scheduleEvent('validDateRangeTestEvent', now.setSeconds(now.getSeconds() + 1), false, { valid: true }).event);
-        validEventIds.push(Redular1.scheduleEvent('validDateRangeTestEvent', now.setSeconds(now.getSeconds() + 1), false, { valid: true }).event);
+        validEvents.push(Redular1.scheduleEvent('validDateRangeTestEvent', now.setSeconds(now.getSeconds() + 1), false, { valid: true }).event);
+        validEvents.push(Redular1.scheduleEvent('validDateRangeTestEvent', now.setSeconds(now.getSeconds() + 1), false, { valid: true }).event);
 
         var endDate = new Date();
         endDate.setSeconds(endDate.getSeconds() + 2);
 
         let eventsInRange = await Redular1.getEvents(startDate, endDate);
         expect(eventsInRange).to.be.an('array');
-        validEventIds.sort();
+        validEvents.sort();
         eventsInRange.sort();
 
-        expect(eventsInRange).to.have.deep.members(validEventIds);
-        // Expire long events from this test
-        setTimeout(() => {}, 4);
+        expect(eventsInRange).to.have.deep.members(validEvents);
+        Redular1.deleteEvents(validEvents);
     });
 
     it('should not return dates which are not within a date range', async function () {
@@ -268,6 +272,8 @@ describe('Redular', function () {
         setTimeout(async () => {
             let eventsInRange = await Redular1.getEvents(startDate, endDate);
             expect(eventsInRange).to.have.deep.members(validEvents);
+            Redular1.deleteEvents(validEvents);
+            Redular1.deleteEvents(invalidEvents);
         }, 1500);
     });
 });

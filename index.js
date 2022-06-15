@@ -113,17 +113,22 @@ Redular.prototype.createEventKeys = function (name, global, id) {
 };
 
 /**
- * Remove a scheduled event and it's data
- * @param {String} eventKey - Event key to delete
+ * Remove a list of scheduled event and it's data
+ * @param {Array<String>} eventKeys - Event keys to delete
  * @returns {Boolean} - true if deleted
  */
-Redular.prototype.deleteEvent = async function (eventKey) {
-    let dataKey = eventKey.replace('redular:', 'redular-data:');
+Redular.prototype.deleteEvents = async function (eventKeys) {
+    let deleteResults = []
+    for (let eventKey of eventKeys){
+        let dataKey = eventKey.replace('redular:', 'redular-data:')
+        deleteResults.push(this.redis.del([eventKey, dataKey]));
+    }
+
     try {
-        await this.redis.del([eventKey, dataKey]);
+        await Promise.all(deleteResults);
         return true;
     } catch (err) {
-        return false;
+        throw err;
     }
 };
 
@@ -134,16 +139,16 @@ Redular.prototype.deleteEvent = async function (eventKey) {
 Redular.prototype.pruneData = async function () {
     try {
         let dataKeys = await this.redis.promisfyCommand('KEYS', ['redular-data:*']);
-        let deletePromises = [];
+        let keysToDelete = []
         for (dataKey of dataKeys) {
             let eventKey = dataKey.replace('redular-data:', 'redular:');
             let exists = await this.redis.promisfyCommand('EXISTS', [eventKey]);
             if (!exists) {
-                deletePromises.push(this.deleteEvent(eventKey));
+                keysToDelete.push(eventKey);
             }
         }
 
-        await Promise.all(deletePromises);
+        await this.deleteEvents(keysToDelete);
         return true;
     } catch (err) {
         return false;
@@ -316,8 +321,7 @@ Redular.prototype.getEvents = async function (startDate, endDate) {
         }
         return datesInRange;
     } catch (err) {
-        // Failed to scan
-        return [];
+        throw err;
     }
 };
 module.exports = Redular;

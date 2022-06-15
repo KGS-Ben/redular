@@ -2,9 +2,19 @@
 
 Node.js event scheduling system powered by Redis keyspace notifications.
 
-**This is a work in progress**
+[![NPM](https://nodei.co/npm/redis-event-dispatcher.png)](https://nodei.co/npm/redis-event-dispatcher/)
 
-[![NPM](https://nodei.co/npm/redular.png)](https://nodei.co/npm/redular/)
+Support is provided for the following:
+
+-   Scheduling an event at a specified date
+-   Scheduling an event immediately
+-   Attaching data to an event
+-   Instance specific event handling
+-   Retrieving expiration date of an event
+-   Overwriting an event
+-   Deleting an event and it's data
+-   Deletion of data with unmatched events
+-   Event retrieval for a specified date range
 
 # How it works
 
@@ -12,15 +22,15 @@ This sets keys in redis with expiry times, then using the keyspace notifications
 
 This is useful because it means you can define handlers and trigger them from anywhere in your infrastructure.
 
+This is an expansion upon [redular]](https://www.npmjs.com/package/redular)
+
 # Installation
 
-TODO: Create a new npm package
-
 ```
-$ npm install redular
+$ npm install redis-event-dispatcher
 ```
 
-This module requires at least version 2.8.0 of Redis
+This module requires at least version 7.0 of Redis
 You must enable Keyspace Notifications (Specifically expiry)
 
 You can use the following command inside `redis-cli` to enable expiry keyspace notificaitons.
@@ -112,6 +122,38 @@ myRedular.instantEvent('greet', false, { name: 'Joe' });
 ```
 
 The options are the same as the scheduleEvent function but without passing a date object
+
+# Delete a list of events
+
+Deletion of events is done by key reference.
+
+```js
+var ids = myRedular.scheduleEvent('my-event', date, false);
+await myRedular.deleteEvents([ids.event]);
+```
+
+# View an events expiration
+
+An event's expiration can be retrieved through it's event id.
+
+```js
+var ids = myRedular.scheduleEvent('my-event', date, false);
+var expiryDate = await Redular1.getEventExpiry(ids.event);
+```
+
+# View events in a specified date range
+
+```js
+myRedular.getEvents(startDate, endDate);
+```
+
+# Remove expired data
+
+Events may expire while the application is offline, leading to data with unmatched events being stored. You may wish to run prune this data on startup.
+
+```js
+await myRedular.pruneData();
+```
 
 # Testing
 

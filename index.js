@@ -119,8 +119,12 @@ Redular.prototype.createEventKeys = function (name, global, id) {
  */
 Redular.prototype.deleteEvent = async function (eventKey) {
     let dataKey = eventKey.replace('redular:', 'redular-data:');
-    await this.redis.del([eventKey, dataKey]);
-    return true;
+    try {
+        await this.redis.del([eventKey, dataKey]);
+        return true;
+    } catch (err) {
+        return false;
+    }
 };
 
 /**

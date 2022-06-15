@@ -118,9 +118,9 @@ Redular.prototype.createEventKeys = function (name, global, id) {
  * @returns {Boolean} - true if deleted
  */
 Redular.prototype.deleteEvents = async function (eventKeys) {
-    let deleteResults = []
-    for (let eventKey of eventKeys){
-        let dataKey = eventKey.replace('redular:', 'redular-data:')
+    let deleteResults = [];
+    for (let eventKey of eventKeys) {
+        let dataKey = eventKey.replace('redular:', 'redular-data:');
         deleteResults.push(this.redis.del([eventKey, dataKey]));
     }
 
@@ -139,7 +139,7 @@ Redular.prototype.deleteEvents = async function (eventKeys) {
 Redular.prototype.pruneData = async function () {
     try {
         let dataKeys = await this.redis.promisfyCommand('KEYS', ['redular-data:*']);
-        let keysToDelete = []
+        let keysToDelete = [];
         for (dataKey of dataKeys) {
             let eventKey = dataKey.replace('redular-data:', 'redular:');
             let exists = await this.redis.promisfyCommand('EXISTS', [eventKey]);
@@ -298,7 +298,7 @@ Redular.prototype.getEvents = async function (startDate, endDate) {
         let datesInRange = [];
 
         // Scan to get keys
-        while(true) {
+        while (true) {
             let scanResult = await this.redis.promisfyCommand('SCAN', ['0', 'MATCH', 'redular:*']);
 
             // Get event keys' expiry
@@ -314,7 +314,7 @@ Redular.prototype.getEvents = async function (startDate, endDate) {
                     // Couldn't get expiry, ignore.
                 }
             }
-            
+
             if (scanResult[0] == '0') {
                 break;
             }

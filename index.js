@@ -113,17 +113,22 @@ Redular.prototype.createEventKeys = function (name, global, id) {
 };
 
 /**
- * Remove a scheduled event and it's data
- * @param {String} eventKey - Event key to delete
+ * Remove a list of scheduled event and it's data
+ * @param {Array<String>} eventKeys - Event keys to delete
  * @returns {Boolean} - true if deleted
  */
-Redular.prototype.deleteEvent = async function (eventKey) {
-    let dataKey = eventKey.replace('redular:', 'redular-data:');
+Redular.prototype.deleteEvents = async function (eventKeys) {
+    let deleteResults = [];
+    for (let eventKey of eventKeys) {
+        let dataKey = eventKey.replace('redular:', 'redular-data:');
+        deleteResults.push(this.redis.del([eventKey, dataKey]));
+    }
+
     try {
-        await this.redis.del([eventKey, dataKey]);
+        await Promise.all(deleteResults);
         return true;
     } catch (err) {
-        return false;
+        throw err;
     }
 };
 
@@ -134,16 +139,16 @@ Redular.prototype.deleteEvent = async function (eventKey) {
 Redular.prototype.pruneData = async function () {
     try {
         let dataKeys = await this.redis.promisfyCommand('KEYS', ['redular-data:*']);
-        let deletePromises = [];
+        let keysToDelete = [];
         for (dataKey of dataKeys) {
             let eventKey = dataKey.replace('redular-data:', 'redular:');
             let exists = await this.redis.promisfyCommand('EXISTS', [eventKey]);
             if (!exists) {
-                deletePromises.push(this.deleteEvent(eventKey));
+                keysToDelete.push(eventKey);
             }
         }
 
-        await Promise.all(deletePromises);
+        await this.deleteEvents(keysToDelete);
         return true;
     } catch (err) {
         return false;
@@ -282,4 +287,41 @@ Redular.prototype.getEventExpiry = async function (eventKey) {
     }
 };
 
+/**
+ * Get events that fall in the inclusive range of startDate, endDate
+ * @param {Date} startDate - Starting date of range (inclusive)
+ * @param {Date} endDate - Ending date of range (inclusive)
+ * @returns {Array<String>} - List of event keys
+ */
+Redular.prototype.getEvents = async function (startDate, endDate) {
+    try {
+        let datesInRange = [];
+
+        // Scan to get keys
+        while (true) {
+            let scanResult = await this.redis.promisfyCommand('SCAN', ['0', 'MATCH', 'redular:*']);
+
+            // Get event keys' expiry
+            let keys = scanResult[1];
+            for (let eventKey of keys) {
+                // Store if in range
+                try {
+                    let expiry = await this.getEventExpiry(eventKey);
+                    if (startDate.getTime() <= expiry.getTime() && expiry.getTime() <= endDate.getTime()) {
+                        datesInRange.push(eventKey);
+                    }
+                } catch (err) {
+                    // Couldn't get expiry, ignore.
+                }
+            }
+
+            if (scanResult[0] == '0') {
+                break;
+            }
+        }
+        return datesInRange;
+    } catch (err) {
+        throw err;
+    }
+};
 module.exports = Redular;

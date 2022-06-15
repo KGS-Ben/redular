@@ -2,7 +2,7 @@
 
 Node.js event scheduling system powered by Redis keyspace notifications.
 
-[![NPM](https://nodei.co/npm/redis-event-dispatcher.png)](https://nodei.co/npm/redis-event-dispatcher/)
+[![NPM](https://nodei.co/npm/@kgs-research/redular.png)](https://nodei.co/npm/@kgs-research/redular/)
 
 Support is provided for the following:
 

@@ -293,8 +293,9 @@ Redular.prototype.getEvents = async function (startDate, endDate) {
         let datesInRange = [];
 
         // Scan to get keys
-        let scanResult = await this.redis.promisfyCommand('SCAN', ['0', 'MATCH', 'redular:*']);
-        do {
+        while(true) {
+            let scanResult = await this.redis.promisfyCommand('SCAN', ['0', 'MATCH', 'redular:*']);
+
             // Get event keys' expiry
             let keys = scanResult[1];
             for (let eventKey of keys) {
@@ -308,8 +309,11 @@ Redular.prototype.getEvents = async function (startDate, endDate) {
                     // Couldn't get expiry, ignore.
                 }
             }
-            scanResult = await this.redis.promisfyCommand('SCAN', [scanResult[0], 'MATCH', 'redular:*']);
-        } while (scanResult[0] !== '0');
+            
+            if (scanResult[0] == '0') {
+                break;
+            }
+        }
         return datesInRange;
     } catch (err) {
         // Failed to scan

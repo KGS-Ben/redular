@@ -225,8 +225,8 @@ describe('Redular', function () {
         Redular1.deleteEvent(eventId.event);
     });
 
-    it('should be able to retrieve events that are within a date range', async function() {
-        let validEventIds = []
+    it('should be able to retrieve events that are within a date range', async function () {
+        let validEventIds = [];
         var startDate = new Date();
 
         var now = new Date();
@@ -240,7 +240,7 @@ describe('Redular', function () {
         expect(eventsInRange).to.be.an('array');
         validEventIds.sort();
         eventsInRange.sort();
-        
+
         expect(eventsInRange).to.have.deep.members(validEventIds);
         // Expire long events from this test
         setTimeout(() => {}, 4);
@@ -257,7 +257,7 @@ describe('Redular', function () {
         // This event will expire before retrieving events
         now = new Date();
         invalidEvents.push(Redular1.scheduleEvent('invalidDateRangeTestEvent', now.setSeconds(now.getSeconds() + 1), false, null, 'expire').event);
-        
+
         // This event should be out of range
         now = new Date();
         invalidEvents.push(Redular1.scheduleEvent('invalidDateRangeTestEvent', now.setHours(now.getHours() + 10), false, null, 'future').event);
@@ -268,6 +268,6 @@ describe('Redular', function () {
         setTimeout(async () => {
             let eventsInRange = await Redular1.getEvents(startDate, endDate);
             expect(eventsInRange).to.have.deep.members(validEvents);
-        }, 1500)
+        }, 1500);
     });
 });
